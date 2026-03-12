@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Lift</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0d0d0d;--s1:#161616;--s2:#1e1e1e;
+  --b1:#2a2a2a;--b2:#383838;
+  --t1:#f0ede8;--t2:#999;--t3:#555;
+  --green:#c8f542;--green2:#a8d630;--red:#ff5c5c;
+  --fd:'Instrument Serif',Georgia,serif;
+  --fm:'DM Mono',monospace;
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+html{-webkit-text-size-adjust:100%;background:var(--bg);}
+body{
+  font-family:var(--fm);font-size:15px;
+  background:var(--bg);color:var(--t1);
+  min-height:100vh;line-height:1.5;
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior:none;
+}
+
+/* ── screens ── */
+.screen{display:none;flex-direction:column;min-height:100vh;padding-bottom:calc(72px + var(--safe-bottom));}
+.screen.active{display:flex;}
+
+/* ── bottom nav ── */
+.nav{
+  position:fixed;bottom:0;left:0;right:0;
+  height:calc(64px + var(--safe-bottom));
+  padding-bottom:var(--safe-bottom);
+  background:rgba(13,13,13,0.95);
+  border-top:1px solid var(--b1);
+  display:flex;
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  z-index:50;
+}
+.nav-item{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;
+  border:none;background:none;
+  color:var(--t3);font-family:var(--fm);font-size:10px;
+  letter-spacing:0.08em;text-transform:uppercase;
+  cursor:pointer;padding:0;min-height:64px;
+  transition:color 0.15s;
+}
+.nav-item.active{color:var(--green);}
+.nav-icon{width:22px;height:22px;}
+
+/* ── page header ── */
+.page-header{padding:20px 20px 8px;}
+.page-title{font-family:var(--fd);font-size:32px;font-style:italic;font-weight:400;line-height:1.1;color:var(--t1);}
+.page-sub{font-size:11px;color:var(--t2);margin-top:4px;letter-spacing:0.07em;text-transform:uppercase;}
+
+/* ── INPUT SCREEN ── */
+.input-body{padding:16px 20px;flex:1;display:flex;flex-direction:column;gap:14px;}
+.field-label{font-size:11px;color:var(--t2);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;}
+textarea{
+  width:100%;background:var(--s1);
+  border:1px solid var(--b1);border-radius:14px;
+  color:var(--t1);font-family:var(--fm);font-size:14px;
+  padding:16px;resize:none;height:260px;line-height:1.7;
+  -webkit-appearance:none;appearance:none;
+}
+textarea:focus{outline:none;border-color:var(--b2);}
+textarea::placeholder{color:var(--t3);}
+.action-btn{
+  width:100%;height:54px;border-radius:14px;
+  font-family:var(--fm);font-size:14px;font-weight:500;
+  letter-spacing:0.06em;text-transform:uppercase;
+  border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.action-btn.primary{background:var(--green);color:#0d0d0d;}
+.action-btn.secondary{background:var(--s1);color:var(--t2);border:1px solid var(--b1);}
+.action-btn:active{opacity:0.8;transform:scale(0.98);}
+.status-line{font-size:12px;color:var(--t2);text-align:center;min-height:18px;}
+.status-line.ok{color:var(--green);}
+.status-line.err{color:var(--red);}
+
+/* ── STATS SCREEN ── */
+.stats-body{padding:0 0 16px;flex:1;}
+
+/* exercise pill scroller */
+.ex-scroll-wrap{padding:12px 20px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.ex-scroll-wrap::-webkit-scrollbar{display:none;}
+.ex-pills{display:flex;gap:8px;width:max-content;}
+.ex-pill{
+  height:38px;padding:0 18px;border-radius:19px;
+  font-family:var(--fm);font-size:12px;letter-spacing:0.05em;
+  border:1px solid var(--b1);background:transparent;color:var(--t2);
+  cursor:pointer;white-space:nowrap;flex-shrink:0;
+  display:flex;align-items:center;
+}
+.ex-pill.active{background:var(--green);color:#0d0d0d;border-color:var(--green);}
+
+/* insight banner */
+.insight{
+  margin:14px 20px 0;
+  background:var(--s1);border-left:3px solid var(--green);
+  border-radius:0 12px 12px 0;
+  padding:12px 16px;font-size:13px;color:var(--t2);line-height:1.8;
+}
+.insight strong{color:var(--t1);font-weight:500;}
+.insight .hi{color:var(--green);}
+
+/* 2x2 stat grid */
+.stat-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:1px;background:var(--b1);
+  margin:14px 20px 0;
+  border:1px solid var(--b1);border-radius:14px;overflow:hidden;
+}
+.stat-cell{background:var(--s1);padding:16px;}
+.stat-num{font-family:var(--fd);font-size:30px;font-style:italic;color:var(--t1);line-height:1;}
+.stat-lbl{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:0.09em;margin-top:4px;}
+.stat-delta{font-size:12px;margin-top:5px;}
+.stat-delta.up{color:var(--green);}
+.stat-delta.down{color:var(--red);}
+
+/* chart */
+.chart-card{
+  margin:14px 20px 0;
+  background:var(--s1);border:1px solid var(--b1);
+  border-radius:14px;padding:16px;
+}
+.chart-label{font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--t2);margin-bottom:12px;}
+.chart-canvas{height:160px !important;}
+
+/* session list */
+.sessions-label{padding:18px 20px 8px;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--t2);}
+.session-card{
+  margin:0 20px 10px;
+  background:var(--s1);border:1px solid var(--b1);border-radius:14px;
+  overflow:hidden;
+}
+.session-card.latest{border-color:#3a4a20;}
+.session-head{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 16px;
+  border-bottom:1px solid var(--b1);
+}
+.session-wk{font-size:12px;font-weight:500;color:var(--t1);letter-spacing:0.04em;}
+.session-date{font-size:11px;color:var(--t3);}
+.session-badge{
+  font-size:10px;padding:3px 10px;border-radius:10px;
+  background:#1c2e0e;color:var(--green);letter-spacing:0.05em;
+}
+.sets-table{width:100%;border-collapse:collapse;}
+.sets-table td{padding:10px 16px;font-size:13px;border-bottom:1px solid var(--b1);}
+.sets-table tr:last-child td{border-bottom:none;}
+.set-idx{color:var(--t3);width:50px;}
+.set-val{text-align:right;}
+.set-val.top{color:var(--green);font-weight:500;}
+.set-max-row{display:flex;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--b1);font-size:11px;color:var(--t2);}
+.set-max-row span{color:var(--green);}
+
+/* ── SHARE SCREEN ── */
+.share-body{padding:20px;flex:1;display:flex;flex-direction:column;gap:16px;}
+.share-desc{font-size:13px;color:var(--t2);line-height:1.8;}
+.url-box{
+  background:var(--s1);border:1px solid var(--b1);border-radius:14px;
+  padding:14px 16px;font-family:var(--fm);font-size:11px;
+  color:var(--t2);word-break:break-all;line-height:1.7;
+  min-height:80px;
+}
+.share-note{font-size:11px;color:var(--t3);line-height:1.7;}
+
+.empty{padding:60px 20px;text-align:center;color:var(--t3);font-size:13px;line-height:1.8;}
+
+/* readonly banner */
+.ro-banner{
+  background:var(--s2);border-bottom:1px solid var(--b1);
+  padding:10px 20px;font-size:11px;color:var(--t2);
+  text-align:center;letter-spacing:0.06em;text-transform:uppercase;
+}
+</style>
+</head>
+<body>
+
+<div id="ro-banner" class="ro-banner" style="display:none">Shared view · read only</div>
+
+<!-- ══ INPUT SCREEN ══ -->
+<div id="screen-input" class="screen active">
+  <div class="page-header">
+    <div class="page-title" id="title-input">Lift</div>
+    <div class="page-sub">Paste your Apple Notes workout</div>
+  </div>
+  <div class="input-body">
+    <div>
+      <div class="field-label">Workout data</div>
+      <textarea id="notes-input" placeholder="Rakesh Chest press
+Week 1 11-2-25
+20x12 25x12 30x12 35x12
+
+Week 2 11-11-25
+35x12 45x12 50x12 55x12"></textarea>
+    </div>
+    <button class="action-btn primary" onclick="parseData()">Parse workout</button>
+    <button class="action-btn secondary" onclick="loadSample()">Load sample data</button>
+    <div class="status-line" id="parse-status"></div>
+  </div>
+</div>
+
+<!-- ══ STATS SCREEN ══ -->
+<div id="screen-stats" class="screen">
+  <div class="page-header">
+    <div class="page-title" id="title-stats">Progress</div>
+    <div class="page-sub" id="stats-sub">Your progression</div>
+  </div>
+  <div class="stats-body" id="stats-body">
+    <div class="empty">Parse a workout first to see stats.</div>
+  </div>
+</div>
+
+<!-- ══ SHARE SCREEN ══ -->
+<div id="screen-share" class="screen">
+  <div class="page-header">
+    <div class="page-title">Share</div>
+    <div class="page-sub">Send to your trainer</div>
+  </div>
+  <div class="share-body">
+    <p class="share-desc">Your workout data is encoded directly in the link — no server, no login needed.</p>
+
+    <div id="hosting-notice" style="display:none;background:#1a1a0a;border:1px solid #3a3a10;border-radius:14px;padding:16px;font-size:13px;color:#999;line-height:1.9;">
+      <div style="color:#c8f542;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;">⚠ One-time setup needed</div>
+      To share with your trainer, the file needs to be hosted online. The quickest free option:
+      <ol style="margin:10px 0 0 16px;display:flex;flex-direction:column;gap:6px;">
+        <li>Go to <strong style="color:#f0ede8;">github.com</strong> → create a free account</li>
+        <li>New repository → name it <strong style="color:#f0ede8;">lift</strong> → set to Public</li>
+        <li>Upload <strong style="color:#f0ede8;">workout-tracker.html</strong> → rename it <strong style="color:#f0ede8;">index.html</strong></li>
+        <li>Settings → Pages → Branch: main → Save</li>
+        <li>Your URL will be: <strong style="color:#c8f542;">https://YOUR-USERNAME.github.io/lift/</strong></li>
+      </ol>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid #2a2a10;">
+        Then tap <strong style="color:#f0ede8;">Copy data</strong> below and append it to your URL, e.g:<br>
+        <span style="color:#c8f542;font-size:11px;word-break:break-all;">https://rakesh.github.io/lift/?d=Q2hlc3Qg...</span>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.09em;color:#555;margin-bottom:8px;">Your link / data</div>
+      <div class="url-box" id="share-url-box">Parse a workout first to generate your link.</div>
+    </div>
+    <button class="action-btn primary" onclick="copyLink()" id="copy-btn">Copy link</button>
+    <p class="share-note">All data is encoded in the URL — nothing stored on any server.</p>
+  </div>
+</div>
+
+<!-- ══ BOTTOM NAV ══ -->
+<nav class="nav">
+  <button class="nav-item active" id="nav-input" onclick="goTo('input')">
+    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="3"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/>
+    </svg>
+    Add
+  </button>
+  <button class="nav-item" id="nav-stats" onclick="goTo('stats')">
+    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+    Progress
+  </button>
+  <button class="nav-item" id="nav-share" onclick="goTo('share')">
+    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/>
+      <line x1="8" y1="11" x2="16" y2="6"/><line x1="8" y1="13" x2="16" y2="18"/>
+    </svg>
+    Share
+  </button>
+</nav>
+
+<script>
+const SAMPLE=`Rakesh Chest press
+Week 1 11-2-25
+20x12 25x12 30x12 35x12
+
+Week 2 11-11-25
+35x12 45x12 50x12 55x12
+
+Week 3 11-19-25
+45x12 50x12 55x12 60x10
+
+Week 4 11-24-25
+45x12 55x12 60x10 60x10
+
+Week 5 11-30-25
+45x12 50x12 55x10 60x10
+
+Week 6 12-12-25
+45x12 55x10 60x8 65x8
+
+
+Week 1
+02-17-26
+45x12 50x12 50x12 50x12
+
+Week 2 02-23-26
+45x12 50x12 55x10 60x10
+
+Week 3 03-2-26
+50x12 55x10 60x10 65x10
+
+Week 4 03-2-26
+50x10 60x10 65x10 70x10`;
+
+let allEx={},currentEx=null,chartInst=null;
+
+/* ── navigation ── */
+function goTo(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  document.getElementById('nav-'+id).classList.add('active');
+  if(id==='share') buildShareUrl();
+}
+
+/* ── parse ── */
+function loadSample(){document.getElementById('notes-input').value=SAMPLE;}
+
+function parseDate(s){
+  if(!s)return null;
+  const p=s.trim().split('-');
+  if(p.length===3){let[m,d,y]=p;if(y.length===2)y='20'+y;return new Date(+y,+m-1,+d);}
+  return null;
+}
+function fmtDate(d){return d?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}):''}
+
+function parseAll(text){
+  const ex={};const blocks=text.split(/\n\n+/);
+  let cur=null;
+  for(const block of blocks){
+    const lines=block.trim().split('\n').map(l=>l.trim()).filter(Boolean);
+    if(!lines.length)continue;
+    const first=lines[0];
+    if(!first.match(/\d+x\d+/)&&!first.match(/^week\s+\d+/i)&&!first.match(/^\d{1,2}-\d{1,2}-\d{2,4}$/)){
+      cur=first.replace(/^[A-Z][a-z]+\s+/,'').trim()||first;
+      if(!ex[cur])ex[cur]={sessions:[]};
+      continue;
+    }
+    if(!cur)continue;
+    let weekNum=null,date=null,sets=[];
+    for(const line of lines){
+      const wm=line.match(/week\s+(\d+)/i);
+      const dm=line.match(/(\d{1,2}-\d{1,2}-\d{2,4})/);
+      const sm=line.match(/(\d+x\d+)/gi);
+      if(wm)weekNum=+wm[1];
+      if(dm)date=parseDate(dm[1]);
+      if(sm)sets=sm.map(s=>{const[w,r]=s.split('x').map(Number);return{weight:w,reps:r};});
+    }
+    if(sets.length)ex[cur].sessions.push({weekNum,date,sets});
+  }
+  for(const e of Object.values(ex))
+    e.sessions.sort((a,b)=>a.date&&b.date?a.date-b.date:(a.weekNum||0)-(b.weekNum||0));
+  return ex;
+}
+
+function parseData(){
+  const text=document.getElementById('notes-input').value.trim();
+  if(!text){setStatus('Paste your workout data first.','err');return;}
+  try{
+    allEx=parseAll(text);
+    const names=Object.keys(allEx);
+    if(!names.length){setStatus('No workout data found — check format.','err');return;}
+    const tot=Object.values(allEx).reduce((a,e)=>a+e.sessions.length,0);
+    setStatus(`✓ ${names.length} exercise${names.length>1?'s':''}, ${tot} sessions`,'ok');
+    const fl=text.split('\n')[0].trim().split(/\s+/);
+    if(fl.length>1&&fl[0].match(/^[A-Z]/)){
+      document.getElementById('title-stats').textContent=fl[0]+"'s Progress";
+    }
+    currentEx=names[0];
+    renderStats();
+    setTimeout(()=>goTo('stats'),600);
+  }catch(e){setStatus('Parse error — check your format.','err');}
+}
+
+function setStatus(msg,type){
+  const el=document.getElementById('parse-status');
+  el.textContent=msg;el.className='status-line'+(type?' '+type:'');
+}
+
+/* ── stats render ── */
+function renderStats(){
+  const names=Object.keys(allEx);
+  if(!names.length){document.getElementById('stats-body').innerHTML='<div class="empty">Parse a workout first.</div>';return;}
+  if(!currentEx||!allEx[currentEx])currentEx=names[0];
+
+  const pills=`<div class="ex-scroll-wrap"><div class="ex-pills">${
+    names.map(n=>`<button class="ex-pill${n===currentEx?' active':''}" onclick="selectEx('${n}',this)">${n}</button>`).join('')
+  }</div></div>`;
+
+  document.getElementById('stats-body').innerHTML=pills+
+    '<div id="ex-content"></div>';
+
+  renderExContent(currentEx);
+}
+
+function selectEx(name,btn){
+  currentEx=name;
+  document.querySelectorAll('.ex-pill').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  renderExContent(name);
+}
+
+function renderExContent(name){
+  const ex=allEx[name];
+  if(!ex)return;
+  const sessions=ex.sessions;
+  const maxW=sessions.map(s=>Math.max(...s.sets.map(st=>st.weight)));
+  const latest=maxW[maxW.length-1],first=maxW[0];
+  const totalPct=((latest-first)/first*100).toFixed(1);
+
+  const now=new Date(),ago30=new Date(now-30*24*60*60*1000);
+  const recent=sessions.filter(s=>s.date&&s.date>=ago30);
+  let moPct=null;
+  if(recent.length>=2){
+    const a=Math.max(...recent[recent.length-1].sets.map(s=>s.weight));
+    const b=Math.max(...recent[0].sets.map(s=>s.weight));
+    moPct=((a-b)/b*100).toFixed(1);
+  }else if(sessions.length>=2){
+    const last2=sessions.slice(-2);
+    moPct=(( Math.max(...last2[1].sets.map(s=>s.weight))-Math.max(...last2[0].sets.map(s=>s.weight)) )/Math.max(...last2[0].sets.map(s=>s.weight))*100).toFixed(1);
+  }
+
+  const totalVol=sessions.reduce((a,s)=>a+s.sets.reduce((b,st)=>b+st.weight*st.reps,0),0);
+  const prIdx=maxW.reduce((best,w,i)=>w>maxW[best]?i:best,0);
+
+  let insight=`Started at <strong>${first} lbs</strong>, now at <strong>${latest} lbs</strong> — `;
+  insight+=`<span class="hi">${totalPct>0?'+':''}${totalPct}% overall lift</span>. `;
+  if(moPct!==null)insight+=`Recent sessions: <span class="hi${moPct<0?' ' :''}">${moPct>=0?'▲':'▼'} ${Math.abs(moPct)}%</span>. `;
+  insight+=`PR in <strong>Week ${sessions[prIdx].weekNum||prIdx+1}</strong> at <span class="hi">${maxW[prIdx]} lbs</span>.`;
+
+  const statsHTML=`
+<div class="stat-grid">
+  <div class="stat-cell">
+    <div class="stat-num">${latest}</div>
+    <div class="stat-lbl">Max weight (lbs)</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-num">${sessions.length}</div>
+    <div class="stat-lbl">Sessions</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-num">${totalPct>0?'+':''}${totalPct}%</div>
+    <div class="stat-lbl">Overall increase</div>
+    ${moPct!==null?`<div class="stat-delta ${+moPct>=0?'up':'down'}">${+moPct>=0?'▲':'▼'} ${Math.abs(moPct)}% recent</div>`:''}
+  </div>
+  <div class="stat-cell">
+    <div class="stat-num">${Math.round(totalVol/1000)}k</div>
+    <div class="stat-lbl">Total volume (lbs)</div>
+  </div>
+</div>`;
+
+  const chartHTML=`
+<div class="chart-card">
+  <div class="chart-label">Max weight per session</div>
+  <canvas id="prog-chart" class="chart-canvas"></canvas>
+</div>`;
+
+  const labels=sessions.map((s,i)=>s.date?fmtDate(s.date):`Wk ${s.weekNum||i+1}`);
+
+  const sessionCards=[...sessions].reverse().map((s,ri)=>{
+    const i=sessions.length-1-ri;
+    const mx=maxW[i];
+    const isLatest=ri===0;
+    return `<div class="session-card${isLatest?' latest':''}">
+      <div class="session-head">
+        <div>
+          <div class="session-wk">Week ${s.weekNum||i+1}${isLatest?' · latest':''}</div>
+          <div class="session-date">${s.date?fmtDate(s.date):''}</div>
+        </div>
+        ${isLatest?'<span class="session-badge">Latest</span>':''}
+      </div>
+      <table class="sets-table">${s.sets.map((st,si)=>`<tr>
+        <td class="set-idx">Set ${si+1}</td>
+        <td class="set-val${st.weight===mx?' top':''}">${st.weight} lbs × ${st.reps}</td>
+      </tr>`).join('')}</table>
+      <div class="set-max-row">Max this session <span>${mx} lbs</span></div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('ex-content').innerHTML=
+    `<div class="insight">${insight}</div>`+statsHTML+chartHTML+
+    `<div class="sessions-label">Session history</div>`+sessionCards;
+
+  if(chartInst)chartInst.destroy();
+  const ctx=document.getElementById('prog-chart').getContext('2d');
+  chartInst=new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets:[{
+      data:maxW,
+      borderColor:'#c8f542',backgroundColor:'rgba(200,245,66,0.07)',
+      pointBackgroundColor:'#c8f542',pointBorderColor:'#0d0d0d',
+      pointRadius:5,pointHoverRadius:7,tension:0.3,fill:true,borderWidth:2
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'#1e1e1e',titleColor:'#888',bodyColor:'#f0ede8',
+        borderColor:'#2a2a2a',borderWidth:1,
+        callbacks:{label:c=>`${c.raw} lbs`}
+      }},
+      scales:{
+        x:{grid:{color:'#1a1a1a'},ticks:{color:'#555',font:{family:'DM Mono',size:10},maxRotation:45}},
+        y:{grid:{color:'#1a1a1a'},ticks:{color:'#555',font:{family:'DM Mono',size:10},callback:v=>v+'lb'}}
+      }
+    }
+  });
+}
+
+/* ── encode / decode ── */
+function encodeData(ex){
+  const parts=Object.entries(ex).map(([name,e])=>{
+    const s=e.sessions.map(s=>{
+      const d=s.date?s.date.getTime():0;
+      const w=s.weekNum||0;
+      const sets=s.sets.map(st=>st.weight+' '+st.reps).join(',');
+      return d+':'+w+':'+sets;
+    }).join(';');
+    return name.replace(/[|~]/g,'_')+'|'+s;
+  });
+  // URL-safe base64: replace chars that break URLs
+  const raw=parts.join('~');
+  const b64=btoa(Array.from(new TextEncoder().encode(raw)).map(b=>String.fromCharCode(b)).join(''));
+  return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function decodeData(str){
+  const b64=str.replace(/-/g,'+').replace(/_/g,'/');
+  const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+  const raw=new TextDecoder().decode(bytes);
+  const ex={};
+  raw.split('~').forEach(part=>{
+    const pi=part.indexOf('|');
+    if(pi===-1)return;
+    const name=part.slice(0,pi);
+    const sessions=part.slice(pi+1).split(';').map(sr=>{
+      const[tsS,wkS,...rest]=sr.split(':');
+      const sets=rest.join(':').split(',').map(s=>{const[w,r]=s.split(' ');return{weight:+w,reps:+r};});
+      const ts=parseInt(tsS);
+      return{date:ts?new Date(ts):null,weekNum:+wkS||null,sets};
+    });
+    ex[name]={sessions};
+  });
+  return ex;
+}
+
+/* ── share ── */
+function buildShareUrl(){
+  const box=document.getElementById('share-url-box');
+  const hostingNotice=document.getElementById('hosting-notice');
+  const copyBtn=document.getElementById('copy-btn');
+  if(!Object.keys(allEx).length){box.textContent='Parse a workout first to generate your link.';return;}
+  const encoded=encodeData(allEx);
+  const isLocal=location.href.startsWith('file:')||location.href.startsWith('about:');
+  if(isLocal){
+    // Show just the data param — user pastes it after their hosted URL
+    box.textContent='?d='+encoded;
+    hostingNotice.style.display='block';
+    copyBtn.textContent='Copy data';
+  } else {
+    const url=location.href.split('?')[0]+'?d='+encoded;
+    box.textContent=url;
+    hostingNotice.style.display='none';
+    copyBtn.textContent='Copy link';
+  }
+}
+
+function copyLink(){
+  const url=document.getElementById('share-url-box').textContent;
+  if(url.startsWith('Parse')||!url)return;
+  const btn=document.getElementById('copy-btn');
+  const ok=()=>{btn.textContent='✓ Copied!';setTimeout(()=>btn.textContent='Copy link',2500);};
+  if(navigator.clipboard?.writeText){navigator.clipboard.writeText(url).then(ok).catch(()=>fbCopy(url,ok));}
+  else fbCopy(url,ok);
+}
+function fbCopy(text,cb){
+  const t=document.createElement('textarea');t.value=text;
+  t.style.cssText='position:fixed;top:-9999px;opacity:0';
+  document.body.appendChild(t);t.focus();t.select();
+  try{document.execCommand('copy');cb();}catch(e){}
+  document.body.removeChild(t);
+}
+
+/* ── init from URL ── */
+window.addEventListener('DOMContentLoaded',()=>{
+  const p=new URLSearchParams(location.search);
+  if(p.has('d')){
+    try{
+      allEx=decodeData(p.get('d'));
+      document.getElementById('ro-banner').style.display='block';
+      document.getElementById('screen-input').style.display='none';
+      document.getElementById('nav-input').style.display='none';
+      currentEx=Object.keys(allEx)[0];
+      renderStats();
+      goTo('stats');
+    }catch(e){console.error('Share link decode failed:',e);}
+  }
+});
+</script>
+</body>
+</html>
