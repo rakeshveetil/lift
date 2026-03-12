@@ -231,28 +231,30 @@ Week 2 11-11-25
   <div class="share-body">
     <p class="share-desc">Your workout data is encoded directly in the link — no server, no login needed.</p>
 
-    <div id="hosting-notice" style="display:none;background:#1a1a0a;border:1px solid #3a3a10;border-radius:14px;padding:16px;font-size:13px;color:#999;line-height:1.9;">
-      <div style="color:#c8f542;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;">⚠ One-time setup needed</div>
-      To share with your trainer, the file needs to be hosted online. The quickest free option:
-      <ol style="margin:10px 0 0 16px;display:flex;flex-direction:column;gap:6px;">
-        <li>Go to <strong style="color:#f0ede8;">github.com</strong> → create a free account</li>
-        <li>New repository → name it <strong style="color:#f0ede8;">lift</strong> → set to Public</li>
-        <li>Upload <strong style="color:#f0ede8;">workout-tracker.html</strong> → rename it <strong style="color:#f0ede8;">index.html</strong></li>
-        <li>Settings → Pages → Branch: main → Save</li>
-        <li>Your URL will be: <strong style="color:#c8f542;">https://YOUR-USERNAME.github.io/lift/</strong></li>
-      </ol>
-      <div style="margin-top:12px;padding-top:12px;border-top:1px solid #2a2a10;">
-        Then tap <strong style="color:#f0ede8;">Copy data</strong> below and append it to your URL, e.g:<br>
-        <span style="color:#c8f542;font-size:11px;word-break:break-all;">https://rakesh.github.io/lift/?d=Q2hlc3Qg...</span>
-      </div>
-    </div>
-
+    <!-- Full URL row -->
     <div>
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.09em;color:#555;margin-bottom:8px;">Your link / data</div>
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.09em;color:#555;margin-bottom:8px;">Full link</div>
       <div class="url-box" id="share-url-box">Parse a workout first to generate your link.</div>
     </div>
-    <button class="action-btn primary" onclick="copyLink()" id="copy-btn">Copy link</button>
-    <p class="share-note">All data is encoded in the URL — nothing stored on any server.</p>
+    <button class="action-btn secondary" onclick="copyLink()" id="copy-btn">Copy full link</button>
+
+    <!-- Divider -->
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="flex:1;height:1px;background:#2a2a2a;"></div>
+      <span style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:0.08em;">or shorten it</span>
+      <div style="flex:1;height:1px;background:#2a2a2a;"></div>
+    </div>
+
+    <!-- Short URL row -->
+    <div>
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.09em;color:#555;margin-bottom:8px;">Short link</div>
+      <div class="url-box" id="short-url-box" style="min-height:44px;display:flex;align-items:center;">
+        <span id="short-url-text" style="color:#555;">Tap below to generate</span>
+      </div>
+    </div>
+    <button class="action-btn primary" onclick="shortenUrl()" id="shorten-btn">Shorten &amp; copy link</button>
+
+    <p class="share-note">Shortening uses TinyURL — free, no account needed. The short link points to your full link above.</p>
   </div>
 </div>
 
@@ -556,21 +558,42 @@ function decodeData(str){
 /* ── share ── */
 function buildShareUrl(){
   const box=document.getElementById('share-url-box');
-  const hostingNotice=document.getElementById('hosting-notice');
-  const copyBtn=document.getElementById('copy-btn');
   if(!Object.keys(allEx).length){box.textContent='Parse a workout first to generate your link.';return;}
   const encoded=encodeData(allEx);
-  const isLocal=location.href.startsWith('file:')||location.href.startsWith('about:');
-  if(isLocal){
-    // Show just the data param — user pastes it after their hosted URL
-    box.textContent='?d='+encoded;
-    hostingNotice.style.display='block';
-    copyBtn.textContent='Copy data';
-  } else {
-    const url=location.href.split('?')[0]+'?d='+encoded;
-    box.textContent=url;
-    hostingNotice.style.display='none';
-    copyBtn.textContent='Copy link';
+  const base=location.href.startsWith('file:')||location.href.startsWith('about:')
+    ?'https://rakeshveetil.github.io/lift/'
+    :location.href.split('?')[0];
+  const url=base+'?d='+encoded;
+  box.textContent=url;
+  // Reset short link when data changes
+  document.getElementById('short-url-text').textContent='Tap below to generate';
+  document.getElementById('short-url-text').style.color='#555';
+  document.getElementById('shorten-btn').textContent='Shorten & copy link';
+}
+
+async function shortenUrl(){
+  const fullUrl=document.getElementById('share-url-box').textContent;
+  if(!fullUrl||fullUrl.startsWith('Parse'))return;
+  const btn=document.getElementById('shorten-btn');
+  const textEl=document.getElementById('short-url-text');
+  btn.textContent='Shortening...';
+  btn.disabled=true;
+  try{
+    const res=await fetch('https://tinyurl.com/api-create.php?url='+encodeURIComponent(fullUrl));
+    if(!res.ok)throw new Error('API error');
+    const short=await res.text();
+    if(!short.startsWith('https://'))throw new Error('Bad response');
+    textEl.textContent=short;
+    textEl.style.color='var(--green)';
+    // Copy it
+    const ok=()=>{btn.textContent='✓ Copied!';btn.disabled=false;setTimeout(()=>btn.textContent='Shorten & copy link',2500);};
+    if(navigator.clipboard?.writeText){navigator.clipboard.writeText(short).then(ok).catch(()=>fbCopy(short,ok));}
+    else fbCopy(short,ok);
+  }catch(e){
+    textEl.textContent='Could not shorten — copy the full link above instead.';
+    textEl.style.color='var(--red)';
+    btn.textContent='Try again';
+    btn.disabled=false;
   }
 }
 
